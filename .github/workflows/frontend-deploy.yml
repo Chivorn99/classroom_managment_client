@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-          cache-dependency-path: './classroom-frontend/pnpm-lock.yaml' # Adjust path if needed
+          cache-dependency-path: 'pnpm-lock.yaml' # Adjust path if needed
 
       - name: Install Vercel CLI
         run: pnpm install --global vercel@latest
