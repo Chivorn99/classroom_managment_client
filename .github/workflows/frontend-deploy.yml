@@ -19,6 +19,13 @@ jobs:
         with:
           version: 8 # or your current pnpm version
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml' # <-- Pointing to the root
+
       - name: Install Vercel CLI
         run: pnpm install --global vercel@latest
 
