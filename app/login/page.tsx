@@ -3,44 +3,65 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+interface LoginResponse {
+  token: string;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setIsLoading(true);
     
     try {
-      const response = await fetch('http://localhost:9090/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          username: email, 
-          password: password 
-        }),
-      });
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_API_URL 
+          ? `${process.env.NEXT_PUBLIC_API_URL}/auth/login` 
+          : 'http://localhost:9090/auth/login',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            username: email, 
+            password: password 
+          }),
+        }
+      );
 
       if (response.ok) {
-        const data = await response.json();
+        const data: LoginResponse = await response.json();
         
-        // Save the token
         localStorage.setItem('jwt_token', data.token); 
         
-        console.log('Login successful! Token saved.');
-        
-        // Redirect to the dashboard
         router.push('/dashboard'); 
       } else {
-        
-        console.error('Login failed. Please check your credentials.');
-        alert('Invalid email or password.');
+        // Try to get the error message from the backend
+        let errorMessage = 'Invalid email or password.';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          // If response isn't JSON, use status-based messages
+          if (response.status === 409) {
+            errorMessage = 'Login conflict - you may already be logged in or there is a session issue.';
+          }
+        }
+        console.error(`Login failed with status ${response.status}`);
+        setError(errorMessage);
       }
     } catch (error) {
       console.error('An error occurred during login:', error);
-      alert('Could not connect to the server.');
+      setError('Could not connect to the server.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -56,6 +77,11 @@ export default function LoginPage() {
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+          {error && (
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
           <div className="space-y-4 rounded-md shadow-sm">
             <div>
               <label htmlFor="email-address" className="sr-only">
@@ -64,9 +90,10 @@ export default function LoginPage() {
               <input
                 id="email-address"
                 name="email"
-                type="text" // Or "email" depending on how you set up your DB
+                type="text"
                 required
-                className="relative block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                disabled={isLoading}
+                className="relative block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Username or Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -81,7 +108,8 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
-                className="relative block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                disabled={isLoading}
+                className="relative block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -92,9 +120,10 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              className="group relative flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+              disabled={isLoading}
+              className="group relative flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed"
             >
-              Sign in
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
         </form>
